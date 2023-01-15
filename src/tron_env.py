@@ -1,7 +1,8 @@
 from random import randint
+import numpy as np
 
 
-class Environment:
+class Tron_Env:
     def __init__(self, max_line, max_column, one_start_posi, two_start_posi):
         # 各コマの開始位置を記憶する
         self.one_start_posi: int = one_start_posi
@@ -24,10 +25,14 @@ class Environment:
         self.before_put_koma = self.one_posi  # 以前置いていた場所を記憶する
 
         self.game_board: list = [self.blank] * (self.MAX_LINE * self.MAX_COLUMN)  # ゲームボード情報をクリア
+        self.memorize_game_board: np.array = np.array([self.blank] * (self.MAX_LINE * self.MAX_COLUMN))  # ひとつ前のボード情報を保持
 
         # 各コマをセットする
         self.game_board[self.one_posi] = self.one_client_koma
         self.game_board[self.two_posi] = self.two_client_koma
+
+        # 障害物セット
+        # self.game_board[self.one_posi+1] = self.obstacle
 
         # 駒の８個前までの情報を記憶する
         self.memorize_one_client: list = [0] * 8
@@ -43,6 +48,10 @@ class Environment:
         :return: None
         """
         self.game_board: list = [self.blank] * (self.MAX_LINE * self.MAX_COLUMN)  # ゲームボード情報をクリア
+        self.memorize_game_board: np.array = np.array([self.blank] * (self.MAX_LINE * self.MAX_COLUMN))  # ひとつ前のボード情報を保持
+
+        # 障害物
+        # self.game_board[self.one_start_posi+1] = self.obstacle
 
         # 位置を更新
         self.one_posi = self.one_start_posi
@@ -119,7 +128,7 @@ class Environment:
             # 移動不可
             return False
 
-    def can_put(self, posi, action):
+    def can_put(self, posi: int, action: int) -> (bool, int):
         """
         駒が該当場所におけるか確認
         :param posi: 現在の駒の位置
@@ -160,16 +169,17 @@ class Environment:
         :param action: 進行方向
         :return: 駒が置けた: True | 置けなかった: False
         """
-        can, posi = self.can_put(self.one_posi, action)
-        if can:
-            self.game_board[posi] = self.one_client_koma
-            self.one_posi = posi
+        can, posi = self.can_put(self.one_posi, action)  # 該当場所に駒が置けるか
+        if can:  # 置けるなら
+            self.memorize_game_board = np.array(self.game_board)  # ボード情報の記憶
+            self.game_board[posi] = self.one_client_koma  # ボード更新
+            self.one_posi = posi  # ポジション記憶
 
             self.list_rotate_and_add(client_num=self.one_client_koma, new_value=posi)  # 行動を記録
             # print("記録しました:", self.memorize_one_client)
-            return True
-        else:
-            return False
+            return True  # 試合続行
+        else:  # 置けないなら
+            return False  # 負け
 
     def put_two_koma(self, action) -> bool:
         """
@@ -177,33 +187,50 @@ class Environment:
         :param action: 進行方向
         :return: 駒が置けた: True | 置けなかった: False
         """
-        can, posi = self.can_put(self.two_posi, action)
-        if can:
-            self.game_board[posi] = self.two_client_koma
-            self.two_posi = posi
+        can, posi = self.can_put(self.two_posi, action)  # 該当場所に駒が置けるか
+        if can:  # 置けるなら
+            self.memorize_game_board = np.array(self.game_board)  # ボード情報記憶
+            self.game_board[posi] = self.two_client_koma  # ボード更新
+            self.two_posi = posi  # ポジション記憶
 
             self.list_rotate_and_add(client_num=self.two_client_koma, new_value=posi)  # 行動を記録
-            return True
-        else:
-            return False
+            return True  # 試合続行
+        else:  # 置けないなら
+            return False  # 負け
+
+    def get_board_info(self) -> list:
+        """
+        ゲームボードの情報を返す
+        :return: ボード情報
+        """
+        return self.game_board.copy()
+
+    def get_memorize_board_info(self) -> list:
+        """
+        ひとつ前のボード情報を返す
+        :return: ボード情報
+        """
+        return self.memorize_game_board.copy()
 
 
-tron = Environment(max_line=10, max_column=10, one_start_posi=42, two_start_posi=47)
+tron = Tron_Env(max_line=10, max_column=10, one_start_posi=42, two_start_posi=47)
 tron.print_board()
 
 while True:
     if tron.can_move():  # 自分の駒が置けるのなら
         # 駒が置けた: True | 置けなかった: False
         if not tron.put_one_koma(int(input("one: "))):
+            tron.print_board()
             print("one loss")
             tron.board_reset()
-            tron.print_board()
+            continue
         else:
             tron.print_board()  # ボード表示
     else:
+        tron.print_board()
         print("one loss")
         tron.board_reset()
-        tron.print_board()
+        continue
 
     tron.change_turn()  # 選手交代
 
@@ -216,8 +243,9 @@ while True:
         tron.print_board()
 
     else:
+        tron.print_board()
         print("two loss")
         tron.board_reset()
-        tron.print_board()
+        continue
 
     tron.change_turn()
