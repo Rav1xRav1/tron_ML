@@ -126,8 +126,6 @@ class Agent:
                                                      np.array([[self.env.one_posi]])], 1), action, -1, terminal)
 
 
-
-
 class Environment:
     def __init__(self):
         # 盤の大きさ
