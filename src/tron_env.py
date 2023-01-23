@@ -22,10 +22,12 @@ class Tron_Env:
         self.obstacle: int = 2  # 障害物 テストコードでは使用しない
 
         self.order_of_koma = self.one_client_koma  # 駒の順番を記憶する
-        self.before_put_koma = self.one_posi  # 以前置いていた場所を記憶する
+
+        # 以前置いていた場所を記憶する
+        self.before_action_one_koma = 0
+        self.before_action_two_koma = 0
 
         self.game_board: list = [self.blank] * (self.MAX_LINE * self.MAX_COLUMN)  # ゲームボード情報をクリア
-        self.memorize_game_board: np.array = np.array([self.blank] * (self.MAX_LINE * self.MAX_COLUMN))  # ひとつ前のボード情報を保持
 
         # 各コマをセットする
         self.game_board[self.one_posi] = self.one_client_koma
@@ -42,13 +44,14 @@ class Tron_Env:
         self.list_rotate_and_add(client_num=self.one_client_koma, new_value=self.one_start_posi)
         self.list_rotate_and_add(client_num=self.two_client_koma, new_value=self.two_start_posi)
 
+        self.memorize_board_info: list = self.get_input_info()  # ひとつ前のボード情報をリストとして保持
+
     def board_reset(self) -> None:
         """
         ゲームボードの情報をリセットする
         :return: None
         """
         self.game_board: list = [self.blank] * (self.MAX_LINE * self.MAX_COLUMN)  # ゲームボード情報をクリア
-        self.memorize_game_board: np.array = np.array([self.blank] * (self.MAX_LINE * self.MAX_COLUMN))  # ひとつ前のボード情報を保持
 
         # 障害物
         # self.game_board[self.one_start_posi+1] = self.obstacle
@@ -64,13 +67,19 @@ class Tron_Env:
         # 今誰の盤なのかを記憶
         self.order_of_koma = self.one_client_koma
 
+        # 以前置いていた場所を記憶する
+        self.before_action_one_koma = 0
+        self.before_action_two_koma = 0
+
         # 駒記憶状況をリセット
         self.memorize_one_client: list = [0] * 8
         self.memorize_two_client: list = [0] * 8
 
-        # 更新
+        # 各クライアントの位置情報を更新する
         self.list_rotate_and_add(client_num=self.one_client_koma, new_value=self.one_start_posi)
         self.list_rotate_and_add(client_num=self.two_client_koma, new_value=self.two_start_posi)
+
+        self.memorize_board_info: list = self.get_input_info()  # ひとつ前のボード情報を保持
 
     def list_rotate_and_add(self, client_num: int, new_value: int) -> None:
 
@@ -99,9 +108,11 @@ class Tron_Env:
         """
         if self.check_turn() == self.one_client_koma:
             self.order_of_koma = self.two_client_koma
+            # print("1➡2")
             return self.order_of_koma
         else:
             self.order_of_koma = self.one_client_koma
+            # print("2➡1")
             return self.order_of_koma
 
     def can_move(self) -> bool:
@@ -171,8 +182,9 @@ class Tron_Env:
         """
         can, posi = self.can_put(self.one_posi, action)  # 該当場所に駒が置けるか
         if can:  # 置けるなら
-            self.memorize_game_board = np.array(self.game_board)  # ボード情報の記憶
+            self.memorize_board_info = self.get_input_info()  # ボード情報の記憶
             self.game_board[posi] = self.one_client_koma  # ボード更新
+            self.before_action_one_koma = action  # 以前置いていた場所として記憶
             self.one_posi = posi  # ポジション記憶
 
             self.list_rotate_and_add(client_num=self.one_client_koma, new_value=posi)  # 行動を記録
@@ -189,8 +201,9 @@ class Tron_Env:
         """
         can, posi = self.can_put(self.two_posi, action)  # 該当場所に駒が置けるか
         if can:  # 置けるなら
-            self.memorize_game_board = np.array(self.game_board)  # ボード情報記憶
+            self.memorize_board_info = self.get_input_info()  # ボード情報記憶
             self.game_board[posi] = self.two_client_koma  # ボード更新
+            self.before_action_two_koma = action  # 以前置いていた場所として記憶
             self.two_posi = posi  # ポジション記憶
 
             self.list_rotate_and_add(client_num=self.two_client_koma, new_value=posi)  # 行動を記録
@@ -205,47 +218,117 @@ class Tron_Env:
         """
         return self.game_board.copy()
 
+    def __conbert_1d_to_2d(self, l: list, cols: int = 5) -> list:
+        """
+        入ってきた一次元配列を二次元配列にして返す
+        :param get_list: 一次元配列
+        :return: 二次元配列
+        """
+        return [l[i:i+cols] for i in range(0, len(l), cols)]
+
+    def __get_client_one_info(self) -> list:
+        """
+        クライアント1のみのリストを返す
+        :return: クライアント1
+        """
+        l = [1 if x == self.one_client_koma else 0 for x in self.get_board_info()]
+        return self.__conbert_1d_to_2d(l)
+
+    def __get_client_two_info(self) -> list:
+        """
+        クライアント2のみのリストを返す
+        :return: クライアント2
+        """
+        l = [1 if x == self.two_client_koma else 0 for x in self.get_board_info()]
+        return self.__conbert_1d_to_2d(l)
+
+    def __get_obstacle_info(self) -> list:
+        """
+        障害物のみのリストを返す
+        :return: 障害物
+        """
+        l = [1 if x == self.obstacle else 0 for x in self.get_board_info()]
+        return self.__conbert_1d_to_2d(l)
+
+    def __get_client_one_posi_info(self) -> list:
+        """
+        クライアント1の現在の場所のみを示すリストを返す
+        :return: クライアント1の現在位置
+        """
+        l = ([0] * (self.MAX_COLUMN * self.MAX_LINE))
+        l[self.one_posi] = 1
+        return self.__conbert_1d_to_2d(l)
+
+    def __get_client_two_posi_info(self) -> list:
+        """
+        クライアント2の現在の場所のみを示すリストを返す
+        :return: クライアント2の現在位置
+        """
+        l = ([0] * (self.MAX_COLUMN * self.MAX_LINE))
+        l[self.two_posi] = 1
+        return self.__conbert_1d_to_2d(l)
+
+    def get_input_info(self) -> list:
+        return [self.__get_client_one_info(),
+                self.__get_client_two_info(),
+                self.__get_obstacle_info(),
+                self.__get_client_one_posi_info(),
+                self.__get_client_two_posi_info()]
+
     def get_memorize_board_info(self) -> list:
         """
         ひとつ前のボード情報を返す
         :return: ボード情報
         """
-        return self.memorize_game_board.copy()
+        return self.memorize_board_info.copy()
+
+    def get_before_action(self, client: int) -> int:
+        if client == self.one_client_koma:
+            return self.before_action_one_koma
+        else:
+            return self.before_action_two_koma
 
 
-tron = Tron_Env(max_line=10, max_column=10, one_start_posi=42, two_start_posi=47)
-tron.print_board()
+def main():
+    tron = Tron_Env(max_line=5, max_column=5, one_start_posi=11, two_start_posi=13)
+    tron.print_board()
 
-while True:
-    if tron.can_move():  # 自分の駒が置けるのなら
-        # 駒が置けた: True | 置けなかった: False
-        if not tron.put_one_koma(int(input("one: "))):
+    while True:
+        if tron.can_move():  # 自分の駒が置けるのなら
+            # 駒が置けた: True | 置けなかった: False
+            if not tron.put_one_koma(int(input("one: "))):
+                tron.print_board()
+                print("one loss")
+                tron.board_reset()
+                continue
+            else:
+                # print(tron.get_input_info())
+                # print(tron.get_memorize_board_info())
+                tron.print_board()  # ボード表示
+        else:
             tron.print_board()
             print("one loss")
             tron.board_reset()
             continue
+
+        tron.change_turn()  # 選手交代
+
+        if tron.can_move():
+            put = randint(0, 4)  # 置く駒を乱数で決定する
+            while not tron.put_two_koma(put):  # 駒が置けるまで再試行する
+                put = randint(0, 4)
+
+            print("two:", put)
+            tron.print_board()
+
         else:
-            tron.print_board()  # ボード表示
-    else:
-        tron.print_board()
-        print("one loss")
-        tron.board_reset()
-        continue
+            tron.print_board()
+            print("two loss")
+            tron.board_reset()
+            continue
 
-    tron.change_turn()  # 選手交代
+        tron.change_turn()
 
-    if tron.can_move():
-        put = randint(0, 4)  # 置く駒を乱数で決定する
-        while not tron.put_two_koma(int(put)):  # 駒が置けるまで再試行する
-            put = randint(0, 4)
 
-        print("two:", put)
-        tron.print_board()
-
-    else:
-        tron.print_board()
-        print("two loss")
-        tron.board_reset()
-        continue
-
-    tron.change_turn()
+if __name__ == "__main__":
+    main()
