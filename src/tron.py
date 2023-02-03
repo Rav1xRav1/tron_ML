@@ -1,8 +1,8 @@
-from random import randint
+from random import randint, random
 import numpy as np
 
 
-class Tron_Env:
+class tron:
     def __init__(self, max_line, max_column, one_start_posi, two_start_posi):
         # 各コマの開始位置を記憶する
         self.one_start_posi: int = one_start_posi
@@ -35,6 +35,7 @@ class Tron_Env:
 
         # 障害物セット
         # self.game_board[self.one_posi+1] = self.obstacle
+        self.game_board = self.set_obstacle(self.game_board)
 
         # 駒の８個前までの情報を記憶する
         self.memorize_one_client: list = [0] * 8
@@ -63,6 +64,9 @@ class Tron_Env:
         # 開始位置に配置
         self.game_board[self.one_posi] = self.one_client_koma
         self.game_board[self.two_posi] = self.two_client_koma
+
+        # 障害物を設置
+        self.game_board = self.set_obstacle(self.game_board)
 
         # 今誰の盤なのかを記憶
         self.order_of_koma = self.one_client_koma
@@ -139,28 +143,28 @@ class Tron_Env:
             # 移動不可
             return False
 
-    def can_put(self, posi: int, action: int) -> (bool, int):
+    def can_put(self, posi: int, put_posi: int) -> (bool, int):
         """
         駒が該当場所におけるか確認
         :param posi: 現在の駒の位置
-        :param action: 進行方向
+        :param put_posi: 進行方向
         :return:
         """
-        if not self.game_board[posi] != 0:
-            return False, 0
+        # 上下左右に確認する
+        if posi+1 == put_posi and (posi+1) % self.MAX_COLUMN != 0 and self.game_board[put_posi] == self.blank:
+            # print(1)
+            return True, put_posi
+        elif posi+self.MAX_COLUMN == put_posi and posi < (self.MAX_COLUMN*self.MAX_LINE) and self.game_board[put_posi] == self.blank:
+            # print(2)
+            return True, put_posi
+        elif posi-1 == put_posi and posi % self.MAX_COLUMN != 0 and self.game_board[put_posi] == self.blank:
+            # print(3)
+            return True, put_posi
+        elif posi-self.MAX_COLUMN == put_posi and posi-self.MAX_COLUMN >= 0 and self.game_board[put_posi] == self.blank:
+            # print(4)
+            return True, put_posi
 
-        # 各方向に対して検査
-        if action == 0 and ((posi + 1) % self.MAX_COLUMN) != 0 and self.game_board[posi + 1] == self.blank:
-            return True, posi + 1
-        elif action == 1 and (posi + self.MAX_COLUMN) < (self.MAX_COLUMN * self.MAX_LINE) and self.game_board[
-            posi + self.MAX_COLUMN] == self.blank:
-            return True, posi + self.MAX_COLUMN
-        elif action == 2 and (posi % self.MAX_COLUMN) != 0 and self.game_board[posi - 1] == self.blank:
-            return True, posi - 1
-        elif action == 3 and (posi - self.MAX_COLUMN) >= 0 and self.game_board[posi - self.MAX_COLUMN] == self.blank:
-            return True, posi - self.MAX_COLUMN
-        else:
-            return False, 0
+        return False, 0
 
     def print_board(self) -> None:
         """
@@ -168,23 +172,27 @@ class Tron_Env:
         :return: None
         """
         for index in range(self.MAX_COLUMN * self.MAX_LINE):
-            print(self.game_board[index], end="")
+            print(f"{self.game_board[index]:> 3}|", end="")
             if index % self.MAX_COLUMN != self.MAX_COLUMN - 1:
-                print(" | ", end="")
+                # print("|", end="")
+                pass
             else:
                 print()
 
-    def put_one_koma(self, action) -> bool:
+        print("one position:", self.one_posi)
+        print("two position:", self.two_posi)
+
+    def put_one_koma(self, put_posi) -> bool:
         """
         クライアント１の駒を置く
-        :param action: 進行方向
+        :param put_posi: 進行方向
         :return: 駒が置けた: True | 置けなかった: False
         """
-        can, posi = self.can_put(self.one_posi, action)  # 該当場所に駒が置けるか
+        can, posi = self.can_put(self.one_posi, put_posi)  # 該当場所に駒が置けるか
         if can:  # 置けるなら
             self.memorize_board_info = self.get_input_info()  # ボード情報の記憶
             self.game_board[posi] = self.one_client_koma  # ボード更新
-            self.before_action_one_koma = action  # 以前置いていた場所として記憶
+            self.before_action_one_koma = put_posi  # 以前置いていた場所として記憶
             self.one_posi = posi  # ポジション記憶
 
             self.list_rotate_and_add(client_num=self.one_client_koma, new_value=posi)  # 行動を記録
@@ -218,12 +226,14 @@ class Tron_Env:
         """
         return self.game_board.copy()
 
-    def __conbert_1d_to_2d(self, l: list, cols: int = 5) -> list:
+    def __conbert_1d_to_2d(self, l: list, cols: int = 0) -> list:
         """
         入ってきた一次元配列を二次元配列にして返す
         :param get_list: 一次元配列
         :return: 二次元配列
         """
+        if cols == 0:
+            cols = self.MAX_COLUMN
         return [l[i:i+cols] for i in range(0, len(l), cols)]
 
     def __get_client_one_info(self) -> list:
@@ -256,7 +266,8 @@ class Tron_Env:
         :return: クライアント1の現在位置
         """
         l = ([0] * (self.MAX_COLUMN * self.MAX_LINE))
-        l[self.one_posi] = 1
+        # l = [self.one_posi for _ in l]
+        l[self.one_posi] = self.one_client_koma
         return self.__conbert_1d_to_2d(l)
 
     def __get_client_two_posi_info(self) -> list:
@@ -265,13 +276,48 @@ class Tron_Env:
         :return: クライアント2の現在位置
         """
         l = ([0] * (self.MAX_COLUMN * self.MAX_LINE))
-        l[self.two_posi] = 1
+        # l = [self.two_posi for _ in l]
+        l[self.two_posi] = self.two_client_koma
         return self.__conbert_1d_to_2d(l)
 
+    # 未使用
+    def __put_posi_around(self, l: list, posi: int, n: int) -> list:
+        """
+        引数のリストにposiを中心に四方の値をnにする
+        :param l: 対象リスト
+        :param posi: 中心ポジ
+        :return: 変更後リスト
+        """
+        # 上
+        if (posi - self.MAX_COLUMN) >= 0:
+            if self.game_board[posi-self.MAX_COLUMN] == 0:
+                l[posi-self.MAX_COLUMN] = n
+        # 右
+        if (posi + 1) % self.MAX_COLUMN != 0:
+            if self.game_board[posi+1] == 0:
+                l[posi+1] = n
+        # 下
+        if (posi - self.MAX_COLUMN) < (self.MAX_COLUMN * self.MAX_LINE):
+            if self.game_board[posi-self.MAX_COLUMN] == 0:
+                l[posi-self.MAX_COLUMN] = n
+        # 左
+        if posi % self.MAX_COLUMN != 0:
+            if self.game_board[posi-1] == 0:
+                l[posi-1] = n
+
+        return l
+
+    def __get_game_board_info(self):
+        """
+        クライアント１とクライアント２の情報を合わせて返す
+        :return: ボード情報
+        """
+        # print(self.game_board)
+        return self.__conbert_1d_to_2d(self.game_board.copy())
+
     def get_input_info(self) -> list:
-        return [self.__get_client_one_info(),
-                self.__get_client_two_info(),
-                self.__get_obstacle_info(),
+        return [self.__get_game_board_info(),
+                # self.__get_obstacle_info(),
                 self.__get_client_one_posi_info(),
                 self.__get_client_two_posi_info()]
 
@@ -288,9 +334,24 @@ class Tron_Env:
         else:
             return self.before_action_two_koma
 
+    def set_obstacle(self, board: list) -> list:
+        level = 5
+        offset = round(random()*level)
+
+        for i in range(self.MAX_LINE):
+            if (i+offset)%level == 0:
+                j = round(random()*self.MAX_COLUMN/2)
+                board[i*self.MAX_COLUMN+j] = self.obstacle
+                j = round(random()*self.MAX_COLUMN/2)
+                board[int(i*self.MAX_COLUMN+self.MAX_LINE/2+j)] = self.obstacle
+
+        return board
+
 
 def main():
-    tron = Tron_Env(max_line=5, max_column=5, one_start_posi=11, two_start_posi=13)
+    max_line, max_column = 16, 20
+
+    tron = Tron_Env(max_line=max_line, max_column=max_column, one_start_posi=int(max_line/2*max_column+max_column/4), two_start_posi=int((max_line/2+1)*max_column-(max_column/4+1)))
     tron.print_board()
 
     while True:
@@ -314,9 +375,9 @@ def main():
         tron.change_turn()  # 選手交代
 
         if tron.can_move():
-            put = randint(0, 4)  # 置く駒を乱数で決定する
+            put = randint(0, max_column*max_line)  # 置く駒を乱数で決定する
             while not tron.put_two_koma(put):  # 駒が置けるまで再試行する
-                put = randint(0, 4)
+                put = randint(0, max_column*max_line)
 
             print("two:", put)
             tron.print_board()
