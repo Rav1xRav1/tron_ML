@@ -23,9 +23,9 @@ class Tron:
         self.BOARD_SIZE = max_line * max_column
 
         self.blank: int = 0  # 空白のマス
-        self.one_client_koma: int = 10  # クライアント1の駒
-        self.two_client_koma: int = -10  # クライアント2の駒
-        self.obstacle: int = -5  # 障害物
+        self.one_client_koma: int = 5  # クライアント1の駒
+        self.two_client_koma: int = -5  # クライアント2の駒
+        self.obstacle: int = -3  # 障害物
 
         self.order_of_koma = self.one_client_koma  # 駒の順番を記憶する
 
@@ -199,10 +199,16 @@ class Tron:
         return [lst[i:i + cols] for i in range(0, len(lst), cols)]
 
     def get_input_info(self) -> list:
-        return [self.__conbert_1d_to_2d(self.game_board.copy())]
+        board = self.game_board.copy()
+        board[self.memory.get_memory_one_action()] = 10
+        board[self.memory.get_memory_two_action()] = -10
+        return [self.__conbert_1d_to_2d(board)]
 
     def get_memorize_board_info(self) -> list:
-        return [self.__conbert_1d_to_2d(self.memory.get_memory_state())]
+        board = self.memory.get_memory_state()
+        board[self.memory.get_memory_one_action()] = 10
+        board[self.memory.get_memory_two_action()] = -10
+        return [self.__conbert_1d_to_2d(board)]
 
     def get_before_action(self, client: int) -> int:
         """
