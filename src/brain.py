@@ -26,16 +26,14 @@ class Brain:
     def train(self, states, next_states, action, reward, is_finished):  # ニューラルネットワークを訓練
 
         states = torch.from_numpy(states).float()  # テンソルに変換
-        if next_states is not None: next_states = torch.from_numpy(next_states).float()  # テンソルに変換
+        next_states = torch.from_numpy(next_states).float()  # テンソルに変換
 
         if self.is_gpu:
             states = states.to(self.device)
-
-            if next_states is not None:
-                next_states = next_states.to(self.device)
+            next_states = next_states.to(self.device)
 
         self.net.eval()  # 評価モード
-        if next_states is not None: next_q = self.net(next_states)  # 次の場面をnnに通して値をとる
+        next_q = self.net(next_states)  # 次の場面をnnに通して値をとる
         self.net.train()  # 訓練モード
         q = self.net(states)  # 今の場面をnnに通して値をとる
 
@@ -47,6 +45,7 @@ class Brain:
 
         self.net.optimizer.zero_grad()  # 勾配を初期化
         loss = self.net.criterion(q, t)  # 損失を計算
+        # print(loss.item())
         loss.backward()  # 逆伝播で勾配を最適化
         self.net.optimizer.step()  # 最適化
 
