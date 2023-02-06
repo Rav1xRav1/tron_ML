@@ -210,9 +210,9 @@ class Tron:
         :return: 以前の行動記録
         """
         if client == self.one_client_koma:
-            return self.before_action_one_koma
+            return self.memory.get_memory_one_action()
         else:
-            return self.before_action_two_koma
+            return self.memory.get_memory_two_action()
 
     def set_obstacle(self, board: list) -> list:
         """
@@ -240,6 +240,9 @@ class Tron:
         :return: 敵の位置
         """
         return self.two_posi
+
+    def __get_memorize_board_info(self) -> list:
+        return self.__conbert_1d_to_2d(self.memory.get_memory_state())
 
 
 def main():
