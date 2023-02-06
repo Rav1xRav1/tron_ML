@@ -7,8 +7,7 @@ from model import Model
 
 class Brain:
     def __init__(self, net, is_gpu, gamma=0.9, r=0.99, lr=0.01, debug=False, device="cpu"):
-        self.n_state = 5 * 5  # 状態の数
-        self.n_action = 20*16  # 行動の数
+        self.n_action = 4  # 行動の数
 
         self.net: Model = net  # ニューラルネットワークのモデル
         self.is_gpu = is_gpu  # GPUを使うかどうか
@@ -16,7 +15,6 @@ class Brain:
 
         if self.is_gpu:
             self.net.to(self.device)  # GPU対応
-            # print(self.net)
 
         self.eps = 1.0  # ε
         self.gamma = gamma  # 割引率
@@ -25,7 +23,7 @@ class Brain:
 
         self.debug: bool = debug
 
-    def train(self, states, next_states, action, reward, terminal):  # ニューラルネットワークを訓練
+    def train(self, states, next_states, action, reward, is_finished):  # ニューラルネットワークを訓練
 
         states = torch.from_numpy(states).float()  # テンソルに変換
         if next_states is not None: next_states = torch.from_numpy(next_states).float()  # テンソルに変換
@@ -42,7 +40,7 @@ class Brain:
         q = self.net(states)  # 今の場面をnnに通して値をとる
 
         t = q.clone().detach()  # コピーして勾配情報を消す
-        if terminal:
+        if is_finished:
             t[action] = reward  # エピソード終了時の正解は、報酬のみ
         else:
             t[action] = reward + self.gamma * np.max(next_q.detach().cpu().numpy(), axis=0)
@@ -63,7 +61,7 @@ class Brain:
         else:  # Q値の高い行動を選択
             self.net.eval()  # 評価モード
             q = self.net(states)
-            # softmaxを嚙ませたうえで行列の一番値が大きい要素のインデックスを返す
+            # 行列の一番値が大きい要素のインデックスを返す
             action = np.argmax(q.detach().cpu().numpy(), axis=0)
 
         if self.eps > 0.1:  # εの下限
