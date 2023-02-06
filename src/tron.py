@@ -2,7 +2,7 @@ from random import randint, random
 import numpy as np
 
 
-class tron:
+class Tron:
     def __init__(self, max_line, max_column, one_start_posi, two_start_posi):
         # 各コマの開始位置を記憶する
         self.one_start_posi: int = one_start_posi
@@ -234,6 +234,7 @@ class tron:
         """
         if cols == 0:
             cols = self.MAX_COLUMN
+        self.print_board()
         return [l[i:i+cols] for i in range(0, len(l), cols)]
 
     def __get_client_one_info(self) -> list:
@@ -317,7 +318,6 @@ class tron:
 
     def get_input_info(self) -> list:
         return [self.__get_game_board_info(),
-                # self.__get_obstacle_info(),
                 self.__get_client_one_posi_info(),
                 self.__get_client_two_posi_info()]
 
@@ -343,9 +343,18 @@ class tron:
                 j = round(random()*self.MAX_COLUMN/2)
                 board[i*self.MAX_COLUMN+j] = self.obstacle
                 j = round(random()*self.MAX_COLUMN/2)
-                board[int(i*self.MAX_COLUMN+self.MAX_LINE/2+j)] = self.obstacle
+                while True:
+                    try:
+                        board[int(i*self.MAX_COLUMN+self.MAX_LINE/2+j)] = self.obstacle
+                    except IndexError:
+                        j -= 3
+                    finally:
+                        break
 
         return board
+
+    def get_enemy_cell(self) -> int:
+        return self.two_posi
 
 
 def main():
