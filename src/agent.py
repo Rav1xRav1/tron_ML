@@ -69,15 +69,12 @@ class Agent:
                             self.lose += 1
                             continue
                             # action = self.brain.get_action(now_states)  # 次の一手を決定する
-                            # if debug: print("処理のやり直し")
-                            # self.miss_action += 1
 
                 else:  # False: 動けない
                     if debug: print("駒が動けませんでした。")
                     # print("この状態での", past_states)
                     # print("この行動が原因でした", self.env.get_before_action(1))
-                    self.brain.train(past_states, past_states, self.tron.get_before_action(1), reward=-1, is_finished=True)  # 第二引数意味なし
-                    # print(past_states)
+                    self.brain.train(past_states, past_states, self.tron.memory.get_memory_one_action(), reward=-1, is_finished=True)  # 第二引数意味なし
                     # print(self.env.get_before_action(1))
                     self.reset()  # 試合終了ボード初期化
                     done = True  # 処理終了
@@ -99,7 +96,7 @@ class Agent:
                     # print("この状態で", past_states)
                     # print("この行動をすると", self.env.get_before_action(1))
                     # print("この状態になります", now_states)
-                    self.brain.train(past_states, now_states, self.tron.get_before_action(1), reward=1, is_finished=True)
+                    self.brain.train(past_states, now_states, self.tron.memory.get_memory_one_action(), reward=1, is_finished=True)
                     self.reset()
                     done = True  # 処理終了
                     self.win += 1
