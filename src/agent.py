@@ -26,6 +26,7 @@ class Agent:
             if debug: print("今回の順番は:", self.tron.check_turn())
             now_states = np.array(self.tron.get_input_info())
             past_states = np.array(self.tron.get_memorize_board_info())
+            # print("past", past_states)
             if self.tron.check_turn() == self.tron.one_client_koma:
 
                 # すでにゲームが終わっていないか確認する
@@ -47,12 +48,11 @@ class Agent:
                             self.brain.train(past_states, now_states, action, reward=0, is_finished=False)
                             self.tron.change_turn()  # 順番を交代
                             can_put = True  # 駒が置けました
-                            # self.env.print_board()
                         else:  # 駒が置けないなら
-                            # if debug: print("正しい場所に駒を置けませんでした。")
+                            if debug: print("正しい場所に駒を置けませんでした。")
                             # if debug: print("この状態での", now_states)
                             # if debug: print("このアクションが原因です", action)
-                            self.brain.train(now_states, None, action, reward=-1, is_finished=True)
+                            self.brain.train(now_states, past_states, action, reward=-1, is_finished=True)  # 第二引数意味なし
                             self.reset()  # 試合終了ボード初期化
                             done = True  # 処理終了
                             can_put = True
@@ -66,7 +66,7 @@ class Agent:
                     self.loss_count += 1
                     # print("この状態での", past_states)
                     # print("この行動が原因でした", self.env.get_before_action(1))
-                    self.brain.train(past_states, None, self.tron.get_before_action(1), reward=-1, is_finished=True)
+                    self.brain.train(past_states, past_states, self.tron.get_before_action(1), reward=-1, is_finished=True)  # 第二引数意味なし
                     # print(past_states)
                     # print(self.env.get_before_action(1))
                     self.reset()  # 試合終了ボード初期化
@@ -78,15 +78,7 @@ class Agent:
                     action = -1
 
                     while not self.tron.put_two_koma(action):
-                        direction = randint(0, 3)
-                        if direction == 0:
-                            action = self.tron.get_enemy_cell() + 1
-                        elif direction == 1:
-                            action = self.tron.get_enemy_cell() + self.tron.MAX_COLUMN
-                        elif direction == 2:
-                            action = self.tron.get_enemy_cell() - 1
-                        elif direction == 3:
-                            action = self.tron.get_enemy_cell() - self.tron.MAX_COLUMN
+                        action = randint(0, 3)
 
                     if debug: print("two action:", action)
                     if debug: self.tron.print_board()
