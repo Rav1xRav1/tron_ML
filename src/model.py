@@ -13,7 +13,7 @@ class Model(nn.Module):
 
         # self.pool = nn.MaxPool2d(3, 1)  # プーリング層
 
-        self.fc1 = nn.Linear(64*height*width, 1024)  # 全結合層
+        self.fc1 = nn.Linear(1024, 1024)  # 全結合層
         self.fc2 = nn.Linear(1024, 512)
         self.fc3 = nn.Linear(512, 256)
         self.fc4 = nn.Linear(256, output_size)
@@ -27,7 +27,6 @@ class Model(nn.Module):
 
     def forward(self, x):
         x = self.relu(self.conv1(x))
-        # x = self.pool(x)
         x = self.relu(self.conv2(x))
         # x = self.pool(x)
         x = x.view(x.size()[0], -1)
