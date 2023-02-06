@@ -232,7 +232,7 @@ class Tron:
                 n = i * self.MAX_COLUMN + j
                 if board[n] == self.blank: board[n] = self.obstacle
                 j = round(random() * self.MAX_COLUMN / 2)
-                n = int(i * self.MAX_COLUMN + self.MAX_LINE / 2 + j)
+                n = int(i * self.MAX_COLUMN + self.MAX_LINE / 2 + j) - 1
                 if board[n] == self.blank: board[n] = self.obstacle
 
         return board
