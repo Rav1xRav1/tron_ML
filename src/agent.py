@@ -11,22 +11,32 @@ class Agent:
 
         self.brain = brain
 
+        self.game: int = 0
+        self.win: int = 0
+        self.lose: int = 0
+
         self.reset()
 
     def reset(self):
         self.tron.board_reset()  # ボード情報リセット
+
+    def counter_reset(self):
+        self.game, self.win, self.lose = 0, 0, 0
+
+    def get_counter(self) -> tuple[int, int, int]:
+        return self.game, self.win, self.lose
 
     def play(self, debug: bool = False):
         """
         ゲームを一試合プレイする
         """
         done = False  # True: 試合終了 False: 試合継続
+        self.game += 1
 
         while not done:
             if debug: print("今回の順番は:", self.tron.check_turn())
             now_states = np.array(self.tron.get_input_info())
             past_states = np.array(self.tron.get_memorize_board_info())
-            # print("past", past_states)
             if self.tron.check_turn() == self.tron.one_client_koma:
 
                 # すでにゲームが終わっていないか確認する
@@ -56,6 +66,7 @@ class Agent:
                             self.reset()  # 試合終了ボード初期化
                             done = True  # 処理終了
                             can_put = True
+                            self.lose += 1
                             continue
                             # action = self.brain.get_action(now_states)  # 次の一手を決定する
                             # if debug: print("処理のやり直し")
@@ -63,7 +74,6 @@ class Agent:
 
                 else:  # False: 動けない
                     if debug: print("駒が動けませんでした。")
-                    self.loss_count += 1
                     # print("この状態での", past_states)
                     # print("この行動が原因でした", self.env.get_before_action(1))
                     self.brain.train(past_states, past_states, self.tron.get_before_action(1), reward=-1, is_finished=True)  # 第二引数意味なし
@@ -71,6 +81,7 @@ class Agent:
                     # print(self.env.get_before_action(1))
                     self.reset()  # 試合終了ボード初期化
                     done = True  # 処理終了
+                    self.lose += 1
                     continue
             else:
                 if self.tron.can_move():
@@ -85,11 +96,11 @@ class Agent:
                     self.tron.change_turn()  # 順番を交代
                 else:
                     if debug: print("two loss")
-                    self.win_count += 1  # クライアント1の勝利
                     # print("この状態で", past_states)
                     # print("この行動をすると", self.env.get_before_action(1))
                     # print("この状態になります", now_states)
                     self.brain.train(past_states, now_states, self.tron.get_before_action(1), reward=1, is_finished=True)
                     self.reset()
                     done = True  # 処理終了
+                    self.win += 1
                     continue
