@@ -1,4 +1,5 @@
 from random import randint, random
+import itertools
 import numpy as np
 
 from memory import Memory
@@ -24,7 +25,9 @@ class Tron:
 
         self.blank: int = 0  # 空白のマス
         self.one_client_koma: int = 5  # クライアント1の駒
+        self.one_client_top_koma: int = 10  # クライアント1の頭
         self.two_client_koma: int = -5  # クライアント2の駒
+        self.two_client_top_koma: int = -10  # クライアント2の駒
         self.obstacle: int = -3  # 障害物
 
         self.order_of_koma = self.one_client_koma  # 駒の順番を記憶する
@@ -32,14 +35,16 @@ class Tron:
         self.game_board: list = [self.blank] * (self.MAX_LINE * self.MAX_COLUMN)  # ゲームボード情報をクリア
 
         # 各コマをセットする
-        self.game_board[self.one_start_posi] = self.one_client_koma
-        self.game_board[self.two_start_posi] = self.two_client_koma
+        self.game_board[self.one_start_posi] = self.one_client_top_koma
+        self.game_board[self.two_start_posi] = self.two_client_top_koma
 
         # 障害物セット
         self.game_board = self.set_obstacle(self.game_board)
 
         # 状態保存
-        self.memory.add_memory_state(self.game_board)
+        self.memory.add_now_state(self.game_board)
+        self.memory.add_memory_one_position(self.one_start_posi)
+        self.memory.add_memory_two_position(self.two_start_posi)
 
     def board_reset(self) -> None:
         """
@@ -56,8 +61,8 @@ class Tron:
         self.two_posi = self.two_start_posi
 
         # 開始位置に配置
-        self.game_board[self.one_posi] = self.one_client_koma
-        self.game_board[self.two_posi] = self.two_client_koma
+        self.game_board[self.one_start_posi] = self.one_client_top_koma
+        self.game_board[self.two_start_posi] = self.two_client_top_koma
 
         # 障害物を設置
         self.game_board = self.set_obstacle(self.game_board)
@@ -66,7 +71,9 @@ class Tron:
         self.order_of_koma = self.one_client_koma
 
         # 状態保存
-        self.memory.add_memory_state(self.game_board)
+        self.memory.add_now_state(self.game_board)
+        self.memory.add_memory_one_position(self.one_start_posi)
+        self.memory.add_memory_two_position(self.two_start_posi)
 
     def check_turn(self) -> int:
         """
@@ -82,11 +89,9 @@ class Tron:
         """
         if self.check_turn() == self.one_client_koma:
             self.order_of_koma = self.two_client_koma
-            # print("1➡2")
             return self.order_of_koma
         else:
             self.order_of_koma = self.one_client_koma
-            # print("2➡1")
             return self.order_of_koma
 
     def can_move(self) -> bool:
@@ -131,21 +136,21 @@ class Tron:
 
         return False, 0
 
-    def print_board(self) -> None:
+    def print_board(self, board: np.array = None, is_debug: bool = False) -> None:
         """
         ボードを表示
         :return: None
         """
+        if is_debug: print("---デバッグ用の画面です---")
+        if board is None:
+            board = self.game_board.copy()
+        else:
+            # ndarrayを一次元の配列に入れ替える
+            board = list(itertools.chain.from_iterable(board.tolist()[0]))
         for index in range(self.MAX_COLUMN * self.MAX_LINE):
-            print(f"{self.game_board[index]:> 3}|", end="")
-            if index % self.MAX_COLUMN != self.MAX_COLUMN - 1:
-                # print("|", end="")
-                pass
-            else:
+            print(f"{board[index]:> 3}|", end="")
+            if not index % self.MAX_COLUMN != self.MAX_COLUMN - 1:
                 print()
-
-        print("one position:", self.one_posi)
-        print("two position:", self.two_posi)
 
     def put_one_koma(self, direction) -> bool:
         """
@@ -155,9 +160,11 @@ class Tron:
         """
         can, posi = self.can_put(self.one_posi, direction)  # 該当場所に駒が置けるか
         if can:  # 置けるなら
-            self.memory.add_memory_state(new_state=self.game_board)  # ボード情報保存
-            self.game_board[posi] = self.one_client_koma  # ボード更新
-            self.memory.add_memory_one_action(new_action=direction)  # 以前置いていた場所として記憶
+            self.game_board[self.memory.get_memory_one_position()] = self.one_client_koma  # トップの情報を削除
+            self.game_board[posi] = self.one_client_top_koma  # ボード更新
+            self.memory.add_now_state(new_state=self.game_board)  # ボード情報保存
+            self.memory.add_memory_one_position(new_position=posi)  # 以前置いていた場所として記憶
+            self.memory.add_memory_one_action(new_action=direction)  # 以前向いた方向として記憶
             self.one_posi = posi  # ポジション記憶
 
             return True  # 試合続行
@@ -172,9 +179,11 @@ class Tron:
         """
         can, posi = self.can_put(self.two_posi, direction)  # 該当場所に駒が置けるか
         if can:  # 置けるなら
-            self.memory.add_memory_state(new_state=self.game_board)  # ボード情報保存
-            self.game_board[posi] = self.two_client_koma  # ボード更新
-            self.memory.add_memory_two_action(new_action=direction)  # 以前置いていた場所として記憶
+            self.game_board[self.memory.get_memory_two_position()] = self.two_client_koma  # トップ情報を削除
+            self.game_board[posi] = self.two_client_top_koma  # ボード更新
+            self.memory.add_now_state(new_state=self.game_board)  # ボード情報保存
+            self.memory.add_memory_two_position(new_position=posi)  # 以前置いていた場所として記憶
+            self.memory.add_memory_two_action(new_action=direction)  # 以前向いた方向として記憶
             self.two_posi = posi  # ポジション記憶
 
             return True  # 試合続行
@@ -198,16 +207,14 @@ class Tron:
             cols = self.MAX_COLUMN
         return [lst[i:i + cols] for i in range(0, len(lst), cols)]
 
+    # この状態に変化
     def get_input_info(self) -> list:
-        board = self.game_board.copy()
-        board[self.memory.get_memory_one_action()] = 10
-        board[self.memory.get_memory_two_action()] = -10
+        board = self.memory.get_now_state()
         return [self.__conbert_1d_to_2d(board)]
 
+    # この状態から
     def get_memorize_board_info(self) -> list:
         board = self.memory.get_memory_state()
-        board[self.memory.get_memory_one_action()] = 10
-        board[self.memory.get_memory_two_action()] = -10
         return [self.__conbert_1d_to_2d(board)]
 
     def get_before_action(self, client: int) -> int:
@@ -217,9 +224,9 @@ class Tron:
         :return: 以前の行動記録
         """
         if client == self.one_client_koma:
-            return self.memory.get_memory_one_action()
+            return self.memory.get_memory_one_position()
         else:
-            return self.memory.get_memory_two_action()
+            return self.memory.get_memory_two_position()
 
     def set_obstacle(self, board: list) -> list:
         """
